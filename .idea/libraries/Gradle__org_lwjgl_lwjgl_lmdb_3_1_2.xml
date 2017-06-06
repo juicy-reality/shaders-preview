@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.lwjgl:lwjgl-lmdb:3.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-lmdb/3.1.2/6dc3c97cc1e80a63044917bdfa01b2a5116189c5/lwjgl-lmdb-3.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-lmdb/3.1.2/6e17a9a04b98b4d6794b641c0bf18a57572f1c42/lwjgl-lmdb-3.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

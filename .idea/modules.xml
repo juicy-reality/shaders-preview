@@ -3,8 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/shaders.iml" filepath="$PROJECT_DIR$/.idea/modules/shaders.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/shaders_main.iml" filepath="$PROJECT_DIR$/.idea/modules/shaders_main.iml" group="shaders" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/shaders_test.iml" filepath="$PROJECT_DIR$/.idea/modules/shaders_test.iml" group="shaders" />
     </modules>
   </component>
 </project>

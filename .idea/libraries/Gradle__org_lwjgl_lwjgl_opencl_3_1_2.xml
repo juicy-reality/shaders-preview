@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.lwjgl:lwjgl-opencl:3.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-opencl/3.1.2/eb15f404b90cf6149f0814a99a56204bcb945d0a/lwjgl-opencl-3.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-opencl/3.1.2/c53c1b06aab0c1b680c122430ac705813df6e19b/lwjgl-opencl-3.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

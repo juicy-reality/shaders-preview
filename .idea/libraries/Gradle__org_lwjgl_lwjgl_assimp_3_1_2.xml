@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.lwjgl:lwjgl-assimp:3.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-assimp/3.1.2/a5e057835be22aecb2dc1e2b1550c61a628deaf6/lwjgl-assimp-3.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-assimp/3.1.2/e17fd7c3cad0b3044d451c2c8066dffa9ffa1cf7/lwjgl-assimp-3.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.lwjgl:lwjgl-nfd:3.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-nfd/3.1.2/c031ee34390c6d3c92b1a26dd7407357cbfb570d/lwjgl-nfd-3.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl-nfd/3.1.2/99aed21894b4dd4d44e9943d3f55c79ef3f9396b/lwjgl-nfd-3.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

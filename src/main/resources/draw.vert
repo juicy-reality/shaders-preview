@@ -1,11 +1,17 @@
 #version 150 core
 
-in vec4 inPosition;
-in highp vec2 aTexCoord;
-out highp vec2 vTexCoord;
+/* The position of the vertex as two-dimensional vector */
+in vec2 vertex;
 
-void main()
-{
-   vTexCoord = aTexCoord;
-   gl_Position = inPosition;
+/* Write interpolated texture coordinate to fragment shader */
+out vec2 texcoord;
+
+void main(void) {
+  gl_Position = vec4(vertex, 0.0, 1.0);
+
+  /*
+   * Compute texture coordinate by simply
+   * interval-mapping from [-1..+1] to [0..1]
+   */
+  texcoord = vertex * 0.5 + vec2(0.5, 0.5);
 }

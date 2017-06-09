@@ -237,7 +237,7 @@
 //		int fshader = createShader("quad.fs", GL_FRAGMENT_SHADER);
 //		glAttachShader(quadProgram, vshader);
 //		glAttachShader(quadProgram, fshader);
-//		glBindAttribLocation(quadProgram, 0, "vertex");
+//		glBindAttribLocation(quadProgram, 0, "inPosition");
 //		glBindFragDataLocation(quadProgram, 0, "color");
 //		glLinkProgram(quadProgram);
 //		int linked = glGetProgrami(quadProgram, GL_LINK_STATUS);

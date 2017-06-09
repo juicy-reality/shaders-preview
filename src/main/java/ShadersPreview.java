@@ -12,18 +12,18 @@ import java.nio.charset.StandardCharsets;
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL15.glBindBuffer;
-import static org.lwjgl.opengl.GL15.glBufferData;
-import static org.lwjgl.opengl.GL15.glGenBuffers;
+import static org.lwjgl.opengl.GL13.*;
+import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL30.glBindFragDataLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glGenVertexArrays;
-import static org.lwjgl.opengles.GLES20.GL_ARRAY_BUFFER;
-import static org.lwjgl.opengles.GLES20.GL_STATIC_DRAW;
+import static org.lwjgl.stb.STBImage.stbi_failure_reason;
+import static org.lwjgl.stb.STBImage.stbi_load;
+import static org.lwjgl.stb.STBImage.stbi_set_flip_vertically_on_load;
 import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.*;
 import static org.lwjgl.opengl.GL20.glCreateProgram;
-import static org.lwjgl.opengl.GL31.glDrawArraysInstanced;
 
 
 public class ShadersPreview {
@@ -37,26 +37,26 @@ public class ShadersPreview {
 
     private int imageTextureID;
 
+    private int depthTextureID;
+
     private void drawTexture(int textureID, int textureID2)
     {
         glUseProgram(drawProgramID);
 
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, textureID);
-
-        //glActiveTexture(GL_TEXTURE1);
-        //glBindTexture(GL_TEXTURE_2D, textureID2);
         glBindVertexArray(fullScreenVao);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-//		glBindTexture(GL_TEXTURE_2D, 0);
-//		glBindVertexArray(0);
 
-//        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, 1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glBindTexture(GL_TEXTURE_2D, textureID2);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
     // draws each frame
     private void drawFrame() {
-        drawTexture(imageTextureID, imageTextureID);
+        drawTexture(imageTextureID, depthTextureID);
     }
 
     private int createQuadFullScreenVao() {
@@ -80,17 +80,31 @@ public class ShadersPreview {
 	}
 
     private void initVars() {
+        // config opengl
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         // draw texture directly
         drawProgramID = glCreateProgram();
         int drawVertID = createShader("draw.vert", GL_VERTEX_SHADER);
 		int drawFragID = createShader("draw.frag", GL_FRAGMENT_SHADER);
-
         glAttachShader(drawProgramID, drawVertID);
         glAttachShader(drawProgramID, drawFragID);
         glLinkProgram(drawProgramID);
         checkProgramStatus(drawProgramID);
+        // we tell how this called in shaders
+		glBindAttribLocation(drawProgramID, 0, "vertex");
+		glBindFragDataLocation(drawProgramID, 0, "color");
 
         fullScreenVao = createQuadFullScreenVao();
+
+        imageTextureID = loadTexture("src/main/resources/color_alpha.png");
+        depthTextureID = loadTexture("src/main/resources/depth_rgb.png");
+
+        glUseProgram(drawProgramID);
+        // Set sampler2d in GLSL fragment shader to texture unit 0
+        glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex"), 0);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex2"), 1);
     }
 
     public static CharSequence getShaderCode(String name) {
@@ -131,8 +145,41 @@ public class ShadersPreview {
         }
     }
 
+    public static int loadTexture(String path) {
+        ByteBuffer image;
+        int width, height;
 
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            /* Prepare image buffers */
+            IntBuffer w = stack.mallocInt(1);
+            IntBuffer h = stack.mallocInt(1);
+            IntBuffer comp = stack.mallocInt(1);
 
+            /* Load image */
+            stbi_set_flip_vertically_on_load(true);
+            image = stbi_load(path, w, h, comp, 4);
+            if (image == null) {
+                throw new RuntimeException("Failed to load a texture file!"
+                        + System.lineSeparator() + stbi_failure_reason());
+            }
+
+            /* Get width and height of image */
+            width = w.get();
+            height = h.get();
+        }
+
+        // create texture
+        int textureID = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        return textureID;
+    }
 
     /**
      * have not touched rest of file
@@ -222,7 +269,7 @@ public class ShadersPreview {
         GL.createCapabilities();
 
         // Set the clear color
-        glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.

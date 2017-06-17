@@ -104,9 +104,13 @@ public class ShadersPreview {
 
         long time = System.currentTimeMillis() % 5000L - 2500L;
         float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
+        float[] mMVPMatrix;
 
-        float[] mMVPMatrix = getMVPMatrix(angleInDegrees);
+        mMVPMatrix = getMVPMatrix(angleInDegrees);
         runComputeShader(0, mMVPMatrix);
+
+        mMVPMatrix = getMVPMatrix(angleInDegrees);
+        runComputeShader(1, mMVPMatrix);
 
         finalDraw();
     }
@@ -117,7 +121,7 @@ public class ShadersPreview {
         float[] mMVPMatrix=new float[16];
         float[] mProjectionMatrix=new float[16];;
 
-        System.out.println("Angel " + angleInDegrees);
+        // System.out.println("Angel " + angleInDegrees);
 
         mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 0, 1.0f, 0.0f, 0.0f);
@@ -191,8 +195,10 @@ public class ShadersPreview {
 
         glUseProgram(drawProgramID);
         // Set sampler2d in GLSL fragment shader to texture unit 0
-        glUniform1i(glGetUniformLocation(drawProgramID, "uResultTex"), 0);
-        glUniform1i(glGetUniformLocation(drawProgramID, "uImageTex"), 1);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uResult0Tex"), 0);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uImage0Tex"), 1);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uResult1Tex"), 2);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uImage1Tex"), 3);
 
         glUseProgram(computeProgramID);
         // Set sampler2d in GLSL fragment shader to texture unit 0

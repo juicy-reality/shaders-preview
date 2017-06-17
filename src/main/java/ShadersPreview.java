@@ -2,15 +2,19 @@ import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
 import org.lwjgl.system.*;
+import stolen.Matrix;
+
 
 import java.io.DataInputStream;
-import java.io.IOException;
+
 import java.io.InputStream;
 import java.nio.*;
-import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
+
 
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.opengl.ARBComputeShader.glDispatchCompute;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL13.*;
 import static org.lwjgl.opengl.GL15.*;
@@ -18,6 +22,9 @@ import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.glBindFragDataLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glGenVertexArrays;
+import static org.lwjgl.opengl.GL42.glBindImageTexture;
+import static org.lwjgl.opengl.GL42.glMemoryBarrier;
+import static org.lwjgl.opengl.GL43.*;
 import static org.lwjgl.stb.STBImage.stbi_failure_reason;
 import static org.lwjgl.stb.STBImage.stbi_load;
 import static org.lwjgl.stb.STBImage.stbi_set_flip_vertically_on_load;
@@ -39,6 +46,22 @@ public class ShadersPreview {
 
     private int depthTextureID;
 
+    private float[] mViewMatrix = new float[16];
+    private float[] mModelMatrix= new float[16];;
+    private float[] mMVPMatrix=new float[16];;
+    private float[] mProjectionMatrix=new float[16];;
+    private int     workgroupSize;
+    private int mMVPMatrixHandle;
+
+    private static final int WIDTH = 640;
+    private static final int HEIGHT = 480;
+
+    private int                    computeProgramID, clearProgramID;
+    private int                    resultTextureId;
+
+    private static final String   S_COMP_SHADER_HEADER = "#version 310 es\n#define LOCAL_SIZE %d\n";
+
+
     private void drawTexture(int textureID, int textureID2)
     {
         glUseProgram(drawProgramID);
@@ -56,7 +79,9 @@ public class ShadersPreview {
 
     // draws each frame
     private void drawFrame() {
-        drawTexture(imageTextureID, depthTextureID);
+        runClearShader(resultTextureId);
+        runComputeFilter(imageTextureID, resultTextureId);
+        drawTexture(resultTextureId, imageTextureID);
     }
 
     private int createQuadFullScreenVao() {
@@ -92,6 +117,19 @@ public class ShadersPreview {
         glAttachShader(drawProgramID, drawFragID);
         glLinkProgram(drawProgramID);
         checkProgramStatus(drawProgramID);
+
+        clearProgramID = glCreateProgram();
+        int clearCompID = createShader("clear.comp", GL_COMPUTE_SHADER);
+        glAttachShader(clearProgramID, clearCompID);
+        glLinkProgram(clearProgramID);
+        checkProgramStatus(clearProgramID);
+
+        computeProgramID =  glCreateProgram();
+        int computeCompID = createShader("draw.comp", GL_COMPUTE_SHADER);
+        glAttachShader(computeProgramID, computeCompID);
+        glLinkProgram(computeProgramID);
+        checkProgramStatus(computeProgramID);
+
         // we tell how this called in shaders
 		glBindAttribLocation(drawProgramID, 0, "vertex");
 		glBindFragDataLocation(drawProgramID, 0, "color");
@@ -100,11 +138,21 @@ public class ShadersPreview {
 
         imageTextureID = loadTexture("src/main/resources/color_alpha.png");
         depthTextureID = loadTexture("src/main/resources/depth_rgb.png");
+        resultTextureId= createFramebufferTexture();
 
         glUseProgram(drawProgramID);
         // Set sampler2d in GLSL fragment shader to texture unit 0
         glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex"), 0);
         glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex2"), 1);
+
+        glUseProgram(computeProgramID);
+        // Set sampler2d in GLSL fragment shader to texture unit 0
+        glUniform1i(glGetUniformLocation(computeProgramID, "inputImage"), 0);
+        glUniform1i(glGetUniformLocation(computeProgramID, "resultImage"), 1);
+
+        //TODO no idea what is this
+        workgroupSize = 16;
+        System.out.println("Work group size = "+workgroupSize);
     }
 
     public static CharSequence getShaderCode(String name) {
@@ -121,6 +169,17 @@ public class ShadersPreview {
 
         return new String(shaderCode);
     }
+
+    private int createFramebufferTexture() {
+		int tex = glGenTextures();
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		ByteBuffer black = null;
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_RGBA, GL_INT, black);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		return tex;
+	}
 
     private int createShader(String name, int type) {
         int shaderID = glCreateShader(type);
@@ -258,6 +317,32 @@ public class ShadersPreview {
         GL.createCapabilities();
 
         initVars();
+        initInitialView();
+
+    }
+
+    private void initInitialView() {
+        // init camera view
+        // Position the eye behind the origin.
+        final float eyeX = 0.0f;
+        final float eyeY = 0.0f;
+        final float eyeZ = 1.5f;
+
+        // We are looking toward the distance
+        final float lookX = 0.0f;
+        final float lookY = 0.0f;
+        final float lookZ = -3.0f;
+
+        // Set our up vector. This is where our head would be pointing were we holding the camera.
+        final float upX = 0.0f;
+        final float upY = 1.0f;
+        final float upZ = 0.0f;
+
+        // Set the view matrix. This matrix can be said to represent the camera position.
+        // NOTE: In OpenGL 1, a ModelView matrix is used, which is a combination of a model and
+        // view matrix. In OpenGL 2, we can keep track of these matrices separately if we choose.
+        Matrix.setLookAtM(mViewMatrix, 0, eyeX, eyeY, eyeZ, lookX, lookY, lookZ, upX, upY, upZ);
+        mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
     }
 
     private void loop() {
@@ -275,6 +360,7 @@ public class ShadersPreview {
         // the window or has pressed the ESCAPE key.
         while ( !glfwWindowShouldClose(window) ) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
+            recalculate();
 
             drawFrame();
 
@@ -285,6 +371,64 @@ public class ShadersPreview {
             glfwPollEvents();
         }
     }
+
+    private void recalculate() {
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+//
+        // Do a complete rotation every 10 seconds.
+        long time = System.currentTimeMillis() % 5000L - 2500L;
+        float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
+        System.out.println("recalculatiing "+angleInDegrees);
+        Matrix.setIdentityM(mModelMatrix, 0);
+        Matrix.rotateM(mModelMatrix, 0, 5, 1.0f, 0.0f, 0.0f);
+        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
+        Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
+
+        // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
+        // (which currently contains model * view).
+        Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
+
+        Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 40.0f);
+
+        // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
+        // (which now contains model * view * projection).
+        Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
+        try {
+            TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void runClearShader(int resultTexId)
+    {
+        glUseProgram(clearProgramID);
+
+        glBindImageTexture(1, resultTexId, 0, false, 0, GL_READ_WRITE, GL_RGBA8);
+
+        glDispatchCompute(WIDTH / workgroupSize, HEIGHT / workgroupSize, 1);
+
+        glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
+    }
+
+    private void runComputeFilter(int sourceTexId, int resultTexId)
+    {
+        glUseProgram(computeProgramID);
+
+        glBindImageTexture(0, sourceTexId, 0, false, 0, GL_READ_ONLY, GL_RGBA8);
+        glBindImageTexture(1, resultTexId, 0, false, 0, GL_READ_WRITE, GL_RGBA8);
+
+        int mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
+        glUniformMatrix4fv(mMVPMatrixHandle,false, mMVPMatrix);
+        glDispatchCompute(WIDTH / workgroupSize,  HEIGHT / workgroupSize, 1);
+
+        // GL_COMPUTE_SHADER_BIT is the same as GL_SHADER_IMAGE_ ACCESS_BARRIER_BIT
+        glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
+    }
+
 
     public static void main(String[] args) {
         new ShadersPreview().run();

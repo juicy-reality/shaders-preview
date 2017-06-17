@@ -1,0 +1,9 @@
+#version 430
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding=1, rgba8) uniform mediump writeonly image2D resultImage;
+
+void main()
+{
+    ivec2 vTexCoord = ivec2(gl_GlobalInvocationID.xy);
+	imageStore(resultImage, vTexCoord, vec4(1.0,1.0,0,1.0));
+}

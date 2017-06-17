@@ -40,51 +40,73 @@ public class ShadersPreview {
     // The window handle
     private long window;
 
-    private int drawProgramID;
+    private int drawProgramID, computeProgramID, clearProgramID;
 
     private int fullScreenVao;
 
-    private int imageTextureID;
-
-    private int depthTextureID;
+    public static final int IMAGES_COUNT = 1;
+    private int[] depthTexturesID = new int[IMAGES_COUNT];
+    private int[] resultTexturesID = new int[IMAGES_COUNT];
+    private int[] imageTexturesID = new int[IMAGES_COUNT];
 
     private float[] mViewMatrix = new float[16];
     private float[] mModelMatrix= new float[16];;
     private float[] mMVPMatrix=new float[16];;
     private float[] mProjectionMatrix=new float[16];;
     private int     workgroupSize;
-    private int mMVPMatrixHandle;
 
     private static final int WIDTH = 640;
     private static final int HEIGHT = 480;
 
-    private int                    computeProgramID, clearProgramID;
-    private int                    resultTextureId;
-
     private static final String   S_COMP_SHADER_HEADER = "#version 310 es\n#define LOCAL_SIZE %d\n";
     private float distanceAmendment = 0f;
 
-
-    private void drawTexture(int textureID, int textureID2)
+    private void finalDraw()
     {
         glUseProgram(drawProgramID);
-
         glBindVertexArray(fullScreenVao);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
+        for (int i = 0; i < IMAGES_COUNT; i ++) {
+            glActiveTexture(GL_TEXTURE0 + i * 2);
+            glBindTexture(GL_TEXTURE_2D, resultTexturesID[i]);
 
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, textureID2);
+            glActiveTexture(GL_TEXTURE0 + i* 2 + 1);
+            glBindTexture(GL_TEXTURE_2D, imageTexturesID[i]);
+        }
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+    private void runClearShaders()
+    {
+        glUseProgram(clearProgramID);
+        for (int i = 0; i < IMAGES_COUNT; i ++) {
+            glBindImageTexture(1, resultTexturesID[i], 0, false, 0, GL_READ_WRITE, GL_RGBA8);
+            glDispatchCompute(WIDTH / workgroupSize, HEIGHT / workgroupSize, 1);
+            glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
+        }
+    }
 
+    private void runComputeShaders()
+    {
+        glUseProgram(computeProgramID);
+        for (int i = 0; i < IMAGES_COUNT; i ++) {
+            glBindImageTexture(0, depthTexturesID[i], 0, false, 0, GL_READ_ONLY, GL_RGBA8);
+            glBindImageTexture(1, resultTexturesID[i], 0, false, 0, GL_READ_WRITE, GL_RGBA8);
+
+            int mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
+            glUniformMatrix4fv(mMVPMatrixHandle,false, mMVPMatrix);
+            glDispatchCompute(WIDTH / workgroupSize,  HEIGHT / workgroupSize, 1);
+
+            // GL_COMPUTE_SHADER_BIT is the same as GL_SHADER_IMAGE_ ACCESS_BARRIER_BIT
+            glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
+        }
+    }
     // draws each frame
     private void drawFrame() {
-        runClearShader(resultTextureId);
-        runComputeFilter(depthTextureID, resultTextureId);
-        drawTexture(resultTextureId, imageTextureID);
+        recalculate();
+        runClearShaders();
+        runComputeShaders();
+        finalDraw();
     }
 
     private int createQuadFullScreenVao() {
@@ -139,10 +161,6 @@ public class ShadersPreview {
 
         fullScreenVao = createQuadFullScreenVao();
 
-        imageTextureID = loadTexture("src/main/resources/color2.png");
-        depthTextureID = loadTexture("src/main/resources/depth2.png");
-        resultTextureId= createFramebufferTexture();
-
         glUseProgram(drawProgramID);
         // Set sampler2d in GLSL fragment shader to texture unit 0
         glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex"), 0);
@@ -156,6 +174,13 @@ public class ShadersPreview {
         //TODO no idea what is this
         workgroupSize = 16;
         System.out.println("Work group size = "+workgroupSize);
+
+        String[] images = {"103621", "103537"};
+        for (int i = 0; i < IMAGES_COUNT; i ++) {
+            imageTexturesID[i] = loadTexture("src/main/resources/" + images[i] + "_color.png");
+            depthTexturesID[i] = loadTexture("src/main/resources/" + images[i] + "_depth.png");
+            resultTexturesID[i] = createFramebufferTexture();
+        }
     }
 
     public static CharSequence getShaderCode(String name) {
@@ -353,7 +378,6 @@ public class ShadersPreview {
         // NOTE: In OpenGL 1, a ModelView matrix is used, which is a combination of a model and
         // view matrix. In OpenGL 2, we can keep track of these matrices separately if we choose.
         Matrix.setLookAtM(mViewMatrix, 0, eyeX, eyeY, eyeZ, lookX, lookY, lookZ, upX, upY, upZ);
-        mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
     }
 
     private void loop() {
@@ -371,7 +395,6 @@ public class ShadersPreview {
         // the window or has pressed the ESCAPE key.
         while ( !glfwWindowShouldClose(window) ) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
-            recalculate();
 
             drawFrame();
 
@@ -387,69 +410,24 @@ public class ShadersPreview {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//
-        // Do a complete rotation every 10 seconds.
         long time = System.currentTimeMillis() % 5000L - 2500L;
         float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
-        // System.out.println("recalculatiing "+ angleInDegrees);
-        mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 30, 1.0f, 0.0f, 0.0f);
-//        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
 
-//        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
+        mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 0, 1.0f, 0.0f, 0.0f);
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
         mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
-
-        // System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
         // (which currently contains model * view).
         mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
-        
-        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 40.0f);
-        // System.out.println("Current mProjectionMatrix" + Arrays.toString(mProjectionMatrix));
 
-        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f+distanceAmendment, 40.0f);
-
+        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f + distanceAmendment, 40.0f);
 
         // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
         // (which now contains model * view * projection).
         mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
-        // System.out.println("Current mMVPMatrix" + Arrays.toString(mMVPMatrix));
-//        try {
-//            TimeUnit.SECONDS.sleep(1);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-
     }
-
-    private void runClearShader(int resultTexId)
-    {
-        glUseProgram(clearProgramID);
-
-        glBindImageTexture(1, resultTexId, 0, false, 0, GL_READ_WRITE, GL_RGBA8);
-
-        glDispatchCompute(WIDTH / workgroupSize, HEIGHT / workgroupSize, 1);
-
-        glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
-    }
-
-    private void runComputeFilter(int sourceTexId, int resultTexId)
-    {
-        glUseProgram(computeProgramID);
-
-        glBindImageTexture(0, sourceTexId, 0, false, 0, GL_READ_ONLY, GL_RGBA8);
-        glBindImageTexture(1, resultTexId, 0, false, 0, GL_READ_WRITE, GL_RGBA8);
-
-        int mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
-        glUniformMatrix4fv(mMVPMatrixHandle,false, mMVPMatrix);
-        glDispatchCompute(WIDTH / workgroupSize,  HEIGHT / workgroupSize, 1);
-
-        // GL_COMPUTE_SHADER_BIT is the same as GL_SHADER_IMAGE_ ACCESS_BARRIER_BIT
-        glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
-    }
-
 
     public static void main(String[] args) {
         new ShadersPreview().run();

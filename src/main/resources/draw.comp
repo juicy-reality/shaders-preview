@@ -45,6 +45,15 @@ void passThrough()
     //imageStore(resultImage, vTexCoord,  vec4(1.0,0.0,0.0,1.0));
 }
 
+void drawPoint(ivec2 vTexCoordNew, vec2 oldPos, vec4 ax) {
+    float old_z = imageLoad(depthImage, vTexCoordNew).z;
+    float old_w = imageLoad(depthImage, vTexCoordNew).w;
+    // check if new picel closer and
+    if (old_z > ax.z || old_w < 0.5) {
+         imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+    }
+}
+
 void doStuff()
 {
     ivec2 vTexCoord = ivec2(gl_GlobalInvocationID.xy) ;
@@ -53,10 +62,10 @@ void doStuff()
 
     vec4 p = imageLoad(inputImage, vTexCoord);
     //imageStore(resultImage, vTexCoord, p);
-    if(p.a < 0.1)
-    {
-        return ;
-    }
+//    if(p.a < 0.1)
+//    {
+//        return ;
+//    }
 
     vec3 pos = vec3(float(vTexCoord.x) / HALF_W - 1.0, float(vTexCoord.y) / HALF_H - 1.0, - (p.g * 256.0 + p.r));
 
@@ -66,10 +75,19 @@ void doStuff()
     //ivec2 vTexCoordNew = ivec2(clamp((ax.x + 1.0) * HALF_W, 0.0, WIDTH), clamp((ax.y + 1.0) * HALF_H, 0.0, WIDTH));
     ivec2 vTexCoordNew = ivec2((ax.x + 1.0) * HALF_W, (ax.y + 1.0) * HALF_H);
 
-    float old_z = imageLoad(depthImage, vTexCoordNew).z;
-    imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+    drawPoint(ivec2(vTexCoordNew.x, vTexCoordNew.y), oldPos, ax);
+    drawPoint(ivec2(vTexCoordNew.x + 1, vTexCoordNew.y + 1), oldPos, ax);
+    drawPoint(ivec2(vTexCoordNew.x + 1, vTexCoordNew.y), oldPos, ax);
+    drawPoint(ivec2(vTexCoordNew.x, vTexCoordNew.y + 1), oldPos, ax);
+//    float old_z = imageLoad(depthImage, vTexCoordNew).z;
+
+//    imageStore(resultImage, ivec2(vTexCoordNew.x, vTexCoordNew.y), vec4(oldPos, ax.z, 1.0));
+//    imageStore(resultImage, , vec4(oldPos, ax.z, 1.0));
+//    imageStore(resultImage, , vec4(oldPos, ax.z, 1.0));
+//    imageStore(resultImage, , vec4(oldPos, ax.z, 1.0));
+
    // if (z > ax.z) {
-   //     imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+    //    imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
    // }
 }
 

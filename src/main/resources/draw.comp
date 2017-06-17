@@ -45,6 +45,7 @@ void passThrough()
     //imageStore(resultImage, vTexCoord,  vec4(1.0,0.0,0.0,1.0));
 }
 
+
 void doStuff()
 {
     ivec2 vTexCoord = ivec2(gl_GlobalInvocationID.xy) ;
@@ -67,9 +68,14 @@ void doStuff()
     ivec2 vTexCoordNew = ivec2((ax.x + 1.0) * HALF_W, (ax.y + 1.0) * HALF_H);
 
     float old_z = imageLoad(depthImage, vTexCoordNew).z;
-    imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+
+    imageStore(resultImage, ivec2(vTexCoordNew.x, vTexCoordNew.y), vec4(oldPos, ax.z, 1.0));
+    imageStore(resultImage, ivec2(vTexCoordNew.x + 1, vTexCoordNew.y + 1), vec4(oldPos, ax.z, 1.0));
+    imageStore(resultImage, ivec2(vTexCoordNew.x + 1, vTexCoordNew.y), vec4(oldPos, ax.z, 1.0));
+    imageStore(resultImage, ivec2(vTexCoordNew.x, vTexCoordNew.y + 1), vec4(oldPos, ax.z, 1.0));
+
    // if (z > ax.z) {
-   //     imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+    //    imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
    // }
 }
 

@@ -381,28 +381,28 @@ public class ShadersPreview {
         // Do a complete rotation every 10 seconds.
         long time = System.currentTimeMillis() % 5000L - 2500L;
         float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
-        System.out.println("recalculatiing "+ angleInDegrees);
+        // System.out.println("recalculatiing "+ angleInDegrees);
         mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 5, 1.0f, 0.0f, 0.0f);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 30, 1.0f, 0.0f, 0.0f);
 //        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
 
 //        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
         mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
 
-        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
+        // System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
         // (which currently contains model * view).
         mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
 
         mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 40.0f);
-        System.out.println("Current mProjectionMatrix" + Arrays.toString(mProjectionMatrix));
+        // System.out.println("Current mProjectionMatrix" + Arrays.toString(mProjectionMatrix));
 
         // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
         // (which now contains model * view * projection).
         mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
-        System.out.println("Current mMVPMatrix" + Arrays.toString(mMVPMatrix));
+        // System.out.println("Current mMVPMatrix" + Arrays.toString(mMVPMatrix));
 //        try {
 //            TimeUnit.SECONDS.sleep(1);
 //        } catch (InterruptedException e) {

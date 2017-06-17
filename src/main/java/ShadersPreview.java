@@ -36,6 +36,7 @@ import static org.lwjgl.opengl.GL20.glCreateProgram;
 
 public class ShadersPreview {
 
+    public static final float AMENDMENT_STEP = 0.05f;
     // The window handle
     private long window;
 
@@ -61,6 +62,7 @@ public class ShadersPreview {
     private int                    resultTextureId;
 
     private static final String   S_COMP_SHADER_HEADER = "#version 310 es\n#define LOCAL_SIZE %d\n";
+    private float distanceAmendment = 0f;
 
 
     private void drawTexture(int textureID, int textureID2)
@@ -288,6 +290,14 @@ public class ShadersPreview {
             if ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE )
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
         });
+        glfwSetScrollCallback(window, (window, xoffset, yoffset)->{
+            if(yoffset>=0){
+                distanceAmendment+= AMENDMENT_STEP;
+            }else{
+                distanceAmendment-=AMENDMENT_STEP;
+            }
+        });
+
 
         // Get the thread stack and push a new frame
         try ( MemoryStack stack = stackPush() ) {
@@ -396,7 +406,7 @@ public class ShadersPreview {
         // (which currently contains model * view).
         mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
 
-        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 40.0f);
+        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f+distanceAmendment, 40.0f);
         System.out.println("Current mProjectionMatrix" + Arrays.toString(mProjectionMatrix));
 
         // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix

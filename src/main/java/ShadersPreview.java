@@ -37,6 +37,9 @@ import static org.lwjgl.opengl.GL20.glCreateProgram;
 public class ShadersPreview {
 
     public static final float AMENDMENT_STEP = 0.05f;
+    public static final int WINDOW_WIDTH = 568;
+    public static final int WINDOW_HEIGHT = 320;
+    public static final float ROTATION_STEP_ANGLE = 1.0f;
     // The window handle
     private long window;
 
@@ -49,9 +52,9 @@ public class ShadersPreview {
     private int depthTextureID;
 
     private float[] mViewMatrix = new float[16];
-    private float[] mModelMatrix= new float[16];;
-    private float[] mMVPMatrix=new float[16];;
-    private float[] mProjectionMatrix=new float[16];;
+    private float[] mModelMatrix= new float[16];
+    private float[] mMVPMatrix=new float[16];
+    private float[] mProjectionMatrix=new float[16];
     private int     workgroupSize;
     private int mMVPMatrixHandle;
 
@@ -63,6 +66,8 @@ public class ShadersPreview {
 
     private static final String   S_COMP_SHADER_HEADER = "#version 310 es\n#define LOCAL_SIZE %d\n";
     private float distanceAmendment = 0f;
+    private float horizontalShift;
+    private float horizontalAngleRotation = 0f;
 
 
     private void drawTexture(int textureID, int textureID2)
@@ -159,24 +164,24 @@ public class ShadersPreview {
     }
 
     public static CharSequence getShaderCode(String name) {
-        InputStream is = ShadersPreview.class.getResourceAsStream(name);
-        final DataInputStream dataStream = new DataInputStream(is);
-        byte[] shaderCode;
-        try {
-            shaderCode = new byte[dataStream.available()];
-            dataStream.readFully(shaderCode);
-            is.close();
-        } catch (Throwable e) {
-            return "";
+            InputStream is = ShadersPreview.class.getResourceAsStream(name);
+            final DataInputStream dataStream = new DataInputStream(is);
+            byte[] shaderCode;
+            try {
+                shaderCode = new byte[dataStream.available()];
+                dataStream.readFully(shaderCode);
+                is.close();
+            } catch (Throwable e) {
+                return "";
+            }
+
+            return new String(shaderCode);
         }
 
-        return new String(shaderCode);
-    }
-
     private int createFramebufferTexture() {
-		int tex = glGenTextures();
-		glBindTexture(GL_TEXTURE_2D, tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        int tex = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		ByteBuffer black = null;
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_RGBA, GL_INT, black);
@@ -281,22 +286,30 @@ public class ShadersPreview {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
         // Create the window
-        window = glfwCreateWindow(568, 320, "Shaders Preview", NULL, NULL);
+        window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Shaders Preview", NULL, NULL);
         if ( window == NULL )
             throw new RuntimeException("Failed to create the GLFW window");
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-            if ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE )
+            if ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE ) {
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
+            }else if (key == GLFW_KEY_LEFT||key == GLFW_KEY_RIGHT){
+                System.out.println("Direction button pressed:"+key);
+                horizontalAngleRotation = (key == GLFW_KEY_LEFT )? horizontalAngleRotation - ROTATION_STEP_ANGLE :horizontalAngleRotation+ROTATION_STEP_ANGLE;            }
         });
         glfwSetScrollCallback(window, (window, xoffset, yoffset)->{
             if(yoffset>=0){
-                distanceAmendment+= AMENDMENT_STEP;
+                distanceAmendment += AMENDMENT_STEP;
             }else{
-                distanceAmendment-=AMENDMENT_STEP;
+                distanceAmendment -= AMENDMENT_STEP;
             }
         });
+
+        glfwSetCursorPosCallback(window, (window, xpos, ypos)->{
+            horizontalShift = (float)xpos/(WINDOW_HEIGHT/2)-1;
+        });
+
 
 
         // Get the thread stack and push a new frame
@@ -387,7 +400,7 @@ public class ShadersPreview {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//
+//b
         // Do a complete rotation every 10 seconds.
         long time = System.currentTimeMillis() % 5000L - 2500L;
         float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
@@ -397,15 +410,17 @@ public class ShadersPreview {
 //        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
 
 //        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
-        mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, horizontalAngleRotation, 0.0f, 1.0f, 0.0f);
+        mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f+horizontalShift, 0.0f, 1.0f);
+
 
         System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
+
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
         // (which currently contains model * view).
         mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
-
+        System.out.println("Applying horizontal shift: "+horizontalShift);
         mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f+distanceAmendment, 40.0f);
         System.out.println("Current mProjectionMatrix" + Arrays.toString(mProjectionMatrix));
 

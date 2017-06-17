@@ -44,15 +44,12 @@ public class ShadersPreview {
 
     private int fullScreenVao;
 
-    public static final int IMAGES_COUNT = 1;
+    public static final int IMAGES_COUNT = 2;
     private int[] depthTexturesID = new int[IMAGES_COUNT];
     private int[] resultTexturesID = new int[IMAGES_COUNT];
     private int[] imageTexturesID = new int[IMAGES_COUNT];
 
     private float[] mViewMatrix = new float[16];
-    private float[] mModelMatrix= new float[16];;
-    private float[] mMVPMatrix=new float[16];;
-    private float[] mProjectionMatrix=new float[16];;
     private int     workgroupSize;
 
     private static final int WIDTH = 640;
@@ -86,27 +83,58 @@ public class ShadersPreview {
         }
     }
 
-    private void runComputeShaders()
+    private void runComputeShader(int i, float[] mMVPMatrix)
     {
         glUseProgram(computeProgramID);
-        for (int i = 0; i < IMAGES_COUNT; i ++) {
-            glBindImageTexture(0, depthTexturesID[i], 0, false, 0, GL_READ_ONLY, GL_RGBA8);
-            glBindImageTexture(1, resultTexturesID[i], 0, false, 0, GL_READ_WRITE, GL_RGBA8);
 
-            int mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
-            glUniformMatrix4fv(mMVPMatrixHandle,false, mMVPMatrix);
-            glDispatchCompute(WIDTH / workgroupSize,  HEIGHT / workgroupSize, 1);
+        glBindImageTexture(0, depthTexturesID[i], 0, false, 0, GL_READ_ONLY, GL_RGBA8);
+        glBindImageTexture(1, resultTexturesID[i], 0, false, 0, GL_READ_WRITE, GL_RGBA8);
 
-            // GL_COMPUTE_SHADER_BIT is the same as GL_SHADER_IMAGE_ ACCESS_BARRIER_BIT
-            glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
-        }
+        int mMVPMatrixHandle = glGetUniformLocation(computeProgramID, "u_MVPMatrix");
+        glUniformMatrix4fv(mMVPMatrixHandle,false, mMVPMatrix);
+
+        glDispatchCompute(WIDTH / workgroupSize,  HEIGHT / workgroupSize, 1);
+        // GL_COMPUTE_SHADER_BIT is the same as GL_SHADER_IMAGE_ ACCESS_BARRIER_BIT
+        glMemoryBarrier(GL_COMPUTE_SHADER_BIT);
     }
     // draws each frame
     private void drawFrame() {
-        recalculate();
+
         runClearShaders();
-        runComputeShaders();
+
+        long time = System.currentTimeMillis() % 5000L - 2500L;
+        float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
+
+        float[] mMVPMatrix = getMVPMatrix(angleInDegrees);
+        runComputeShader(0, mMVPMatrix);
+
         finalDraw();
+    }
+
+
+    private float[] getMVPMatrix(float angleInDegrees) {
+        float[] mModelMatrix= new float[16];;
+        float[] mMVPMatrix=new float[16];
+        float[] mProjectionMatrix=new float[16];;
+
+        System.out.println("Angel " + angleInDegrees);
+
+        mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 0, 1.0f, 0.0f, 0.0f);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
+        mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
+
+        // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
+        // (which currently contains model * view).
+        mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
+
+        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f + distanceAmendment, 40.0f);
+
+        // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
+        // (which now contains model * view * projection).
+        mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
+
+        return mMVPMatrix;
     }
 
     private int createQuadFullScreenVao() {
@@ -163,8 +191,8 @@ public class ShadersPreview {
 
         glUseProgram(drawProgramID);
         // Set sampler2d in GLSL fragment shader to texture unit 0
-        glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex"), 0);
-        glUniform1i(glGetUniformLocation(drawProgramID, "uSourceTex2"), 1);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uResultTex"), 0);
+        glUniform1i(glGetUniformLocation(drawProgramID, "uImageTex"), 1);
 
         glUseProgram(computeProgramID);
         // Set sampler2d in GLSL fragment shader to texture unit 0
@@ -173,7 +201,7 @@ public class ShadersPreview {
 
         //TODO no idea what is this
         workgroupSize = 16;
-        System.out.println("Work group size = "+workgroupSize);
+        System.out.println("Work group size = " + workgroupSize);
 
         String[] images = {"103621", "103537"};
         for (int i = 0; i < IMAGES_COUNT; i ++) {
@@ -404,29 +432,6 @@ public class ShadersPreview {
             // invoked during this call.
             glfwPollEvents();
         }
-    }
-
-    private void recalculate() {
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        long time = System.currentTimeMillis() % 5000L - 2500L;
-        float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
-
-        mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 0, 1.0f, 0.0f, 0.0f);
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
-        mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
-
-        // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
-        // (which currently contains model * view).
-        mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
-
-        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f + distanceAmendment, 40.0f);
-
-        // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
-        // (which now contains model * view * projection).
-        mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
     }
 
     public static void main(String[] args) {

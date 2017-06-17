@@ -24,6 +24,10 @@
 #define HALF_W (WIDTH/2.0)
 #define HALF_H (HEIGHT/2.0)
 
+#define FIELD_OF_VIEW_X 77.0 / (2.0 * 3.14159)
+#define RATIO 3.0 / 4.0
+#define FIELD_OF_VIEW_Y FIELD_OF_VIEW_X * RATIO
+
 layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(binding=0, rgba8) uniform mediump readonly image2D inputImage;
@@ -44,6 +48,7 @@ void passThrough()
 void doStuff()
 {
     ivec2 vTexCoord = ivec2(gl_GlobalInvocationID.xy) ;
+
     vec2 oldPos = vec2(float(vTexCoord.x) / WIDTH, float(vTexCoord.y) / HEIGHT);
 
     vec4 p = imageLoad(inputImage, vTexCoord);
@@ -53,17 +58,22 @@ void doStuff()
         return ;
     }
 
-    vec3 pos = vec3(float(vTexCoord.x) / HALF_W - 1.0, float(vTexCoord.y) / HALF_H - 1.0, - (p.r * 256.0 + p.g));
+    float z = (p.r * 256.0 + p.g);
+    float x = (HALF_W - float(vTexCoord.x)) * tan(FIELD_OF_VIEW_X) * z / HALF_W;
+    float y = (HALF_H - float(vTexCoord.y)) * tan(FIELD_OF_VIEW_Y) * z / HALF_H;
+    // vec3 pos = vec3(float(vTexCoord.x) / HALF_W - 1.0, float(vTexCoord.y) / HALF_H - 1.0, -z);
+    vec3 pos = vec3(x, y, -z);
+    // imageStore(resultImage, vTexCoord, vec4(pos, 1.0));
     vec4 ax = u_MVPMatrix * vec4(pos, 1.0);
 
     //ivec2 vTexCoordNew = ivec2(clamp((ax.x + 1.0) * HALF_W, 0.0, WIDTH), clamp((ax.y + 1.0) * HALF_H, 0.0, WIDTH));
     ivec2 vTexCoordNew = ivec2((ax.x + 1.0) * HALF_W, (ax.y + 1.0) * HALF_H);
-    float z = imageLoad(depthImage, vTexCoordNew).z;
-    if (z > ax.z) {
-        imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
-        //imageStore(resultImage, vTexCoordNew, vec4(oldPos, 0.0, 1.0));
-         //imageStore(resultImage, vTexCoord, p);
-    }
+
+    float old_z = imageLoad(depthImage, vTexCoordNew).z;
+    imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+//    if (z > ax.z) {
+//        imageStore(resultImage, vTexCoordNew, vec4(oldPos, ax.z, 1.0));
+//    }
 }
 
 void main()

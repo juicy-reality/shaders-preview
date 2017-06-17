@@ -10,8 +10,10 @@ out vec4 color;
 
 void main(void)                    // The entry point for our fragment shader.
 {
+
     vec4 disp = texture(uSourceTex, texcoord);
-  //  color=disp;
+    //color=disp;
+    // return ;
     color = texture(uSourceTex2, disp.rg);
 
      // color = texture(uSourceTex, disp.rg);

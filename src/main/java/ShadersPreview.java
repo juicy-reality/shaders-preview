@@ -9,6 +9,7 @@ import java.io.DataInputStream;
 
 import java.io.InputStream;
 import java.nio.*;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 
@@ -80,7 +81,7 @@ public class ShadersPreview {
     // draws each frame
     private void drawFrame() {
         runClearShader(resultTextureId);
-        runComputeFilter(imageTextureID, resultTextureId);
+        runComputeFilter(depthTextureID, resultTextureId);
         drawTexture(resultTextureId, imageTextureID);
     }
 
@@ -381,25 +382,30 @@ public class ShadersPreview {
         long time = System.currentTimeMillis() % 5000L - 2500L;
         float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
         System.out.println("recalculatiing "+angleInDegrees);
-        Matrix.setIdentityM(mModelMatrix, 0);
-        Matrix.rotateM(mModelMatrix, 0, 5, 1.0f, 0.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
-        Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
+        mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 5, 1.0f, 0.0f, 0.0f);
+        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
+        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
+        mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
+        System.out.println("Current mModelMatrix" + Arrays.toString(mModelMatrix));
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
         // (which currently contains model * view).
-        Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
+        mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);
 
-        Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 40.0f);
+        mProjectionMatrix = Matrix.frustumM(mProjectionMatrix, 0, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 40.0f);
+        System.out.println("Current mProjectionMatrix" + Arrays.toString(mProjectionMatrix));
 
         // This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
         // (which now contains model * view * projection).
-        Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
-        try {
-            TimeUnit.SECONDS.sleep(1);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        mMVPMatrix = Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
+        System.out.println("Current mMVPMatrix" + Arrays.toString(mMVPMatrix));
+//        try {
+//            TimeUnit.SECONDS.sleep(1);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
     }
 

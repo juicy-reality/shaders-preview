@@ -38,7 +38,7 @@ package stolen;
 public class Matrix {
 
     /** Temporary memory for operations that need temporary matrix data. */
-    private final static float[] sTemp = new float[32];
+//    private static float[] sTemp = new float[32];
 
     /**
      * @deprecated All methods are static, do not instantiate this class.
@@ -69,8 +69,8 @@ public class Matrix {
      * resultOffset + 16 > result.length or lhsOffset + 16 > lhs.length or
      * rhsOffset + 16 > rhs.length.
      */
-    public static  void multiplyMM(float[] result, int resultOffset,
-                                         float[] lhs, int lhsOffset, float[] rhs, int rhsOffset){
+    public static float[] multiplyMM(float[] result, int resultOffset,
+                                     float[] lhs, int lhsOffset, float[] rhs, int rhsOffset){
         for (int i=0 ; i<4 ; i++) {
             float rhs_i0 = rhs[ I(i,0) ];
             float ri0 = lhs[ I(0,0) ] * rhs_i0;
@@ -89,6 +89,7 @@ public class Matrix {
             result[ I(i,2) ] = ri2;
             result[ I(i,3) ] = ri3;
         }
+        return result;
     }
 
     private static int I(int _i, int _j) {
@@ -332,8 +333,7 @@ public class Matrix {
 
     /**
      * Defines a projection matrix in terms of six clip planes.
-     *
-     * @param m the float array that holds the output perspective matrix
+     *  @param m the float array that holds the output perspective matrix
      * @param offset the offset into float array m where the perspective
      *        matrix data is written
      * @param left
@@ -343,9 +343,9 @@ public class Matrix {
      * @param near
      * @param far
      */
-    public static void frustumM(float[] m, int offset,
-                                float left, float right, float bottom, float top,
-                                float near, float far) {
+    public static float[] frustumM(float[] m, int offset,
+                                   float left, float right, float bottom, float top,
+                                   float near, float far) {
         if (left == right) {
             throw new IllegalArgumentException("left == right");
         }
@@ -386,6 +386,7 @@ public class Matrix {
         m[offset + 12] = 0.0f;
         m[offset + 13] = 0.0f;
         m[offset + 15] = 0.0f;
+        return m;
     }
 
     /**
@@ -444,13 +445,14 @@ public class Matrix {
      * @param sm returns the result
      * @param smOffset index into sm where the result matrix starts
      */
-    public static void setIdentityM(float[] sm, int smOffset) {
+    public static float[] setIdentityM(float[] sm, int smOffset) {
         for (int i=0 ; i<16 ; i++) {
             sm[smOffset + i] = 0;
         }
         for(int i = 0; i < 16; i += 5) {
             sm[smOffset + i] = 1.0f;
         }
+        return sm;
     }
 
     /**
@@ -527,28 +529,27 @@ public class Matrix {
 
     /**
      * Translates matrix m by x, y, and z in place.
-     *
-     * @param m matrix
+     *  @param m matrix
      * @param mOffset index into m where the matrix starts
      * @param x translation factor x
      * @param y translation factor y
      * @param z translation factor z
      */
-    public static void translateM(
+    public static float[] translateM(
             float[] m, int mOffset,
             float x, float y, float z) {
         for (int i=0 ; i<4 ; i++) {
             int mi = mOffset + i;
             m[12 + mi] += m[mi] * x + m[4 + mi] * y + m[8 + mi] * z;
         }
+        return m;
     }
 
     /**
      * Rotates matrix m by angle a (in degrees) around the axis (x, y, z).
      * <p>
      * m and rm must not overlap.
-     *
-     * @param rm returns the result
+     *  @param rm returns the result
      * @param rmOffset index into rm where the result matrix starts
      * @param m source matrix
      * @param mOffset index into m where the source matrix starts
@@ -557,33 +558,34 @@ public class Matrix {
      * @param y Y axis component
      * @param z Z axis component
      */
-    public static void rotateM(float[] rm, int rmOffset,
-                               float[] m, int mOffset,
-                               float a, float x, float y, float z) {
-        synchronized(sTemp) {
-            setRotateM(sTemp, 0, a, x, y, z);
-            multiplyMM(rm, rmOffset, m, mOffset, sTemp, 0);
-        }
+    public static float[] rotateM(float[] rm, int rmOffset,
+                                  float[] m, int mOffset,
+                                  float a, float x, float y, float z) {
+//        synchronized(sTemp) {
+        float[] sTemp = new float[m.length];
+        setRotateM(sTemp, 0, a, x, y, z);
+            return multiplyMM(rm, rmOffset, m, mOffset, sTemp, 0);
+//        }
     }
 
     /**
      * Rotates matrix m in place by angle a (in degrees)
      * around the axis (x, y, z).
-     *
-     * @param m source matrix
+     *  @param m source matrix
      * @param mOffset index into m where the matrix starts
      * @param a angle to rotate in degrees
      * @param x X axis component
      * @param y Y axis component
      * @param z Z axis component
      */
-    public static void rotateM(float[] m, int mOffset,
-                               float a, float x, float y, float z) {
-        synchronized(sTemp) {
-            setRotateM(sTemp, 0, a, x, y, z);
-            multiplyMM(sTemp, 16, m, mOffset, sTemp, 0);
-            System.arraycopy(sTemp, 16, m, mOffset, 16);
-        }
+    public static float[] rotateM(float[] m, int mOffset,
+                                  float a, float x, float y, float z) {
+
+        float[] sTemp = new float[m.length];
+        setRotateM(sTemp, 0, a, x, y, z);
+            sTemp = multiplyMM(sTemp, 16, m, mOffset, sTemp, 0);
+
+        return sTemp;
     }
 
     /**
@@ -592,16 +594,15 @@ public class Matrix {
      * <p>
      * An optimized path will be used for rotation about a major axis
      * (e.g. x=1.0f y=0.0f z=0.0f).
-     *
-     * @param rm returns the result
+     *  @param rm returns the result
      * @param rmOffset index into rm where the result matrix starts
      * @param a angle to rotate in degrees
      * @param x X axis component
      * @param y Y axis component
      * @param z Z axis component
      */
-    public static void setRotateM(float[] rm, int rmOffset,
-                                  float a, float x, float y, float z) {
+    public static float[] setRotateM(float[] rm, int rmOffset,
+                                     float a, float x, float y, float z) {
         rm[rmOffset + 3] = 0;
         rm[rmOffset + 7] = 0;
         rm[rmOffset + 11]= 0;
@@ -655,6 +656,7 @@ public class Matrix {
             rm[rmOffset +  6] =  yz*nc + xs;
             rm[rmOffset + 10] = z*z*nc +  c;
         }
+        return rm;
     }
 
     /**

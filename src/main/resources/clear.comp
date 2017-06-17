@@ -5,5 +5,5 @@ layout(binding=1, rgba8) uniform mediump writeonly image2D resultImage;
 void main()
 {
     ivec2 vTexCoord = ivec2(gl_GlobalInvocationID.xy);
-	imageStore(resultImage, vTexCoord, vec4(1.0,1.0,0,1.0));
+	imageStore(resultImage, vTexCoord, vec4(1.0));
 }

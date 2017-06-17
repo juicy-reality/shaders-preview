@@ -13,5 +13,6 @@ void main(void) {
    * Compute texture coordinate by simply
    * interval-mapping from [-1..+1] to [0..1]
    */
+  // texcoord = vertex * 0.5 + vec2(0.5, 0.5);
   texcoord = vertex * 0.5 + vec2(0.5, 0.5);
 }

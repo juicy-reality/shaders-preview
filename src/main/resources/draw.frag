@@ -7,6 +7,8 @@ uniform sampler2D uImage0Tex;
 uniform sampler2D uResult1Tex;
 uniform sampler2D uImage1Tex;
 
+uniform vec4 uMixer;
+
 in vec2 texcoord;
 out vec4 color;
 
@@ -18,5 +20,5 @@ void main(void)
     vec4 disp1 = texture(uResult1Tex, texcoord);
     vec4 color1 = texture(uImage1Tex, disp1.rg);
 
-    color = (color0 + color1) / 2;
+    color = color0 * uMixer.x + color1 *  uMixer.y;
 }

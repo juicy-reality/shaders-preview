@@ -58,10 +58,13 @@ public class ShadersPreview {
     private static final String   S_COMP_SHADER_HEADER = "#version 310 es\n#define LOCAL_SIZE %d\n";
     private float distanceAmendment = 0f;
 
-    private void finalDraw()
+    private void finalDraw(float[] mixer)
     {
         glUseProgram(drawProgramID);
         glBindVertexArray(fullScreenVao);
+
+        int mMixerHandle = glGetUniformLocation(drawProgramID, "uMixer");
+        glUniform4fv(mMixerHandle, mixer);
 
         for (int i = 0; i < IMAGES_COUNT; i ++) {
             glActiveTexture(GL_TEXTURE0 + i * 2);
@@ -102,21 +105,25 @@ public class ShadersPreview {
 
         runClearShaders();
 
-        long time = System.currentTimeMillis() % 5000L - 2500L;
+        long time = System.currentTimeMillis() % 6000L - 3000L;
         float angleInDegrees = (-90.0f / 10000.0f) * ((int) time);
         float[] mMVPMatrix;
 
-        mMVPMatrix = getMVPMatrix(angleInDegrees);
+        mMVPMatrix = getMVPMatrix(angleInDegrees + 22.5f, .8f);
         runComputeShader(0, mMVPMatrix);
 
-        mMVPMatrix = getMVPMatrix(angleInDegrees);
+        mMVPMatrix = getMVPMatrix(angleInDegrees - 22.5f,-.8f);
         runComputeShader(1, mMVPMatrix);
 
-        finalDraw();
+        float mix = (angleInDegrees + 22.5f) / 45.5f;
+        mix = Math.max(Math.min(mix, 1.0f), 0.0f);
+        System.out.println("mix " + mix);
+        float[] mixer = {1.0f - mix, mix, 0f, 0f};
+        finalDraw(mixer);
     }
 
 
-    private float[] getMVPMatrix(float angleInDegrees) {
+    private float[] getMVPMatrix(float angleInDegrees, float translateX) {
         float[] mModelMatrix= new float[16];;
         float[] mMVPMatrix=new float[16];
         float[] mProjectionMatrix=new float[16];;
@@ -126,7 +133,7 @@ public class ShadersPreview {
         mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 0, 1.0f, 0.0f, 0.0f);
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
-        mModelMatrix = Matrix.translateM(mModelMatrix, 0, 0.0f, 0.0f, 1.0f);
+        mModelMatrix = Matrix.translateM(mModelMatrix, 0, translateX, 0.0f, 0.0f);
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
         // (which currently contains model * view).

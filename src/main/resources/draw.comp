@@ -23,6 +23,7 @@
 
 #define HALF_W (WIDTH/2.0)
 #define HALF_H (HEIGHT/2.0)
+#define THESHOLD 1.0
 
 #define FIELD_OF_VIEW_X 77.0 / (2.0 * 3.14159)
 #define RATIO 1.0
@@ -54,6 +55,15 @@ void drawPoint(ivec2 vTexCoordNew, vec2 oldPos, vec4 ax) {
     }
 }
 
+bool failDepth(ivec2 c, int dx, int dy, float depth) {
+    vec4 p = imageLoad(inputImage, ivec2(c.x + dx, c.y + dy));
+    float v = abs((p.g * 256.0 + p.r) - depth);
+    if (v > THESHOLD) {
+        return true;
+    }
+    return false;
+}
+
 void doStuff()
 {
     ivec2 vTexCoord = ivec2(gl_GlobalInvocationID.xy) ;
@@ -61,6 +71,12 @@ void doStuff()
     vec2 oldPos = vec2(float(vTexCoord.x) / WIDTH, float(vTexCoord.y) / HEIGHT);
 
     vec4 p = imageLoad(inputImage, vTexCoord);
+
+    // near depth checker
+//    float depth = (p.g * 256.0 + p.r);
+//    if (failDepth(vTexCoord, 1, 1, depth) || failDepth(vTexCoord, -1, -1, depth)) {
+//        return ;
+//    }
     //imageStore(resultImage, vTexCoord, p);
 //    if(p.a < 0.1)
 //    {

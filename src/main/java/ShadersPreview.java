@@ -62,7 +62,10 @@ public class ShadersPreview {
     private static final String   S_COMP_SHADER_HEADER = "#version 310 es\n#define LOCAL_SIZE %d\n";
     private float distanceAmendment = 0f;
     private float horizontalShift;
-    private float horizontalAngleRotation = 0f;
+    private float horizontalAngleRotation = 0;
+
+    private float angleDiff = 65.0f;
+    float mix = 0;
 
     private void finalDraw(float[] mixer)
     {
@@ -115,22 +118,25 @@ public class ShadersPreview {
         float angleInDegrees = 0; // (-90.0f / 10000.0f) * ((int) time);
         float[] mMVPMatrix;
 
-        float angleDiff = 30.0f;
-        mMVPMatrix = getMVPMatrix(angleInDegrees + angleDiff, 2.0f);
-        runComputeShader(0, mMVPMatrix);
-
-        mMVPMatrix = getMVPMatrix(angleInDegrees - angleDiff,-2.0f);
-        runComputeShader(1, mMVPMatrix);
-
-        float mix = (horizontalAngleRotation + angleDiff) / (2 * angleDiff);
+        mix = (float) Math.sin(horizontalAngleRotation * 3.14/ (2 * angleDiff));
+        mix = mix * mix;
         mix = Math.max(Math.min(mix, 1.0f), 0.0f);
 
+        mMVPMatrix = getMVPMatrix(angleInDegrees, 0.0f, ( mix) * 0);
+        runComputeShader(0, mMVPMatrix);
+
+        mMVPMatrix = getMVPMatrix( - angleDiff,-0.0f, - (1 - mix) * 0);
+        runComputeShader(1, mMVPMatrix);
+
+        // System.out.println("mi x" + mix);
+
+
+        // float[] mixer = {0.5f, 0.5f, 0f, 0f};
         float[] mixer = {1.0f - mix, mix, 0f, 0f};
         finalDraw(mixer);
     }
 
-
-    private float[] getMVPMatrix(float angleInDegrees, float translateX) {
+    private float[] getMVPMatrix(float angleInDegrees, float translateX, float xa) {
         float[] mModelMatrix= new float[16];;
         float[] mMVPMatrix=new float[16];
         float[] mProjectionMatrix=new float[16];;
@@ -138,10 +144,10 @@ public class ShadersPreview {
         // System.out.println("Angel " + angleInDegrees);
 
         mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, -5.0f, 1.0f, 0.0f, 0.0f);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, xa, 1.0f, 0.0f, 0.0f);
 
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees + horizontalAngleRotation, 0.0f, 1.0f, 0.0f);
-        mModelMatrix = Matrix.translateM(mModelMatrix, 0, translateX + horizontalShift, 0.0f, 0.0f);
+        mModelMatrix = Matrix.translateM(mModelMatrix, 0, translateX + horizontalShift,  0, 2.1f);
 
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
@@ -225,7 +231,7 @@ public class ShadersPreview {
         workgroupSize = 16;
         System.out.println("Work group size = " + workgroupSize);
 
-        String[] images = {"040407", "040507"};
+        String[] images = {"040407","040507"};
         for (int i = 0; i < IMAGES_COUNT; i ++) {
             imageTexturesID[i] = loadTexture("src/main/resources/" + images[i] + "_color.png");
             depthTexturesID[i] = loadTexture("src/main/resources/" + images[i] + "_depth.png");
@@ -365,7 +371,7 @@ public class ShadersPreview {
             if ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE ) {
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
             }else if (key == GLFW_KEY_LEFT||key == GLFW_KEY_RIGHT){
-                System.out.println("Direction button pressed:"+key);
+                // System.out.println("Direction button pressed:"+key);
                 horizontalAngleRotation = (key == GLFW_KEY_LEFT )? horizontalAngleRotation - ROTATION_STEP_ANGLE :horizontalAngleRotation+ROTATION_STEP_ANGLE;            }
         });
         glfwSetScrollCallback(window, (window, xoffset, yoffset)->{
@@ -428,7 +434,7 @@ public class ShadersPreview {
         final float lookZ = -3.0f;
 
         // Set our up vector. This is where our head would be pointing were we holding the camera.
-        final float upX = 0.0f;
+        final float upX = 00f;
         final float upY = 1.0f;
         final float upZ = 0.0f;
 
@@ -447,8 +453,9 @@ public class ShadersPreview {
         GL.createCapabilities();
 
         // Set the clear color
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
+        glClearColor(170f / 256, 159f / 256, 182f / 256, 1.0f);
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
         while ( !glfwWindowShouldClose(window) ) {

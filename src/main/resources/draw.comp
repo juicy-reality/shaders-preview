@@ -79,6 +79,9 @@ void doStuff()
     drawPoint(ivec2(vTexCoordNew.x + 1, vTexCoordNew.y + 1), oldPos, ax);
     drawPoint(ivec2(vTexCoordNew.x + 1, vTexCoordNew.y), oldPos, ax);
     drawPoint(ivec2(vTexCoordNew.x, vTexCoordNew.y + 1), oldPos, ax);
+    drawPoint(ivec2(vTexCoordNew.x - 1, vTexCoordNew.y - 1), oldPos, ax);
+    drawPoint(ivec2(vTexCoordNew.x - 1, vTexCoordNew.y), oldPos, ax);
+    drawPoint(ivec2(vTexCoordNew.x, vTexCoordNew.y - 1), oldPos, ax);
 //    float old_z = imageLoad(depthImage, vTexCoordNew).z;
 
 //    imageStore(resultImage, ivec2(vTexCoordNew.x, vTexCoordNew.y), vec4(oldPos, ax.z, 1.0));

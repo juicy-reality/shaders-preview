@@ -111,19 +111,20 @@ public class ShadersPreview {
 
         runClearShaders();
 
-        long time = System.currentTimeMillis() % 6000L - 3000L;
+//        long time = System.currentTimeMillis() % 6000L - 3000L;
         float angleInDegrees = 0; // (-90.0f / 10000.0f) * ((int) time);
         float[] mMVPMatrix;
 
-        mMVPMatrix = getMVPMatrix(angleInDegrees + 22.5f, .8f);
+        float angleDiff = 30.0f;
+        mMVPMatrix = getMVPMatrix(angleInDegrees + angleDiff, 2.0f);
         runComputeShader(0, mMVPMatrix);
 
-        mMVPMatrix = getMVPMatrix(angleInDegrees - 22.5f,-.8f);
+        mMVPMatrix = getMVPMatrix(angleInDegrees - angleDiff,-2.0f);
         runComputeShader(1, mMVPMatrix);
 
-        float mix = (horizontalAngleRotation + 22.5f) / 45.5f;
+        float mix = (horizontalAngleRotation + angleDiff) / (2 * angleDiff);
         mix = Math.max(Math.min(mix, 1.0f), 0.0f);
-        System.out.println("mix " + mix);
+
         float[] mixer = {1.0f - mix, mix, 0f, 0f};
         finalDraw(mixer);
     }
@@ -137,10 +138,10 @@ public class ShadersPreview {
         // System.out.println("Angel " + angleInDegrees);
 
         mModelMatrix = Matrix.setIdentityM(mModelMatrix, 0);
-        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, 0, 1.0f, 0.0f, 0.0f);
+        mModelMatrix = Matrix.rotateM(mModelMatrix, 0, -5.0f, 1.0f, 0.0f, 0.0f);
 
         mModelMatrix = Matrix.rotateM(mModelMatrix, 0, angleInDegrees + horizontalAngleRotation, 0.0f, 1.0f, 0.0f);
-        mModelMatrix = Matrix.translateM(mModelMatrix, 0, translateX + horizontalShift, 0.0f, 1.0f);
+        mModelMatrix = Matrix.translateM(mModelMatrix, 0, translateX + horizontalShift, 0.0f, 0.0f);
 
 
         // This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
@@ -224,7 +225,7 @@ public class ShadersPreview {
         workgroupSize = 16;
         System.out.println("Work group size = " + workgroupSize);
 
-        String[] images = {"103621", "103537"};
+        String[] images = {"040407", "040507"};
         for (int i = 0; i < IMAGES_COUNT; i ++) {
             imageTexturesID[i] = loadTexture("src/main/resources/" + images[i] + "_color.png");
             depthTexturesID[i] = loadTexture("src/main/resources/" + images[i] + "_depth.png");
